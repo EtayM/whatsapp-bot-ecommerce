@@ -1,3 +1,5 @@
 Flask==2.2.3
 requests==2.28.1
-python-dotenv==0.20.0  # If you prefer environment variables in .env
+python-dotenv==0.20.0
+celery==5.2.3
+redis==4.5.1

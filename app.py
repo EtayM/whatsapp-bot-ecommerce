@@ -1,18 +1,17 @@
-import logging
-import sys
 from flask import Flask, request, jsonify
 from config import META_VERIFY_TOKEN
 from services.wacloud_api import parse_incoming_message, send_whatsapp_message
+
+# Import logging configuration
+import logging
+import sys
 
 # Basic configuration that logs to stdout. Adjust level and format as needed.
 logging.basicConfig(
     level=logging.INFO,  # Set to DEBUG for more verbose logging
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(sys.stdout)
-    ]
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
-
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -39,15 +38,11 @@ def webhook():
     """
     data = request.get_json()
     logger.debug("Received webhook payload: %s", data)
-
     sender_id, message_text = parse_incoming_message(data)
-    
     if sender_id is None or message_text is None:
         logger.debug("Received webhook with missing sender or message: %s", data)
         return jsonify({"status": "invalid payload"}), 400
-    
     if sender_id is not None and message_text is not None:
-
         # Send a basic reply
         response_text = f"Hello! I've received your message: \"{message_text}\""
         response = send_whatsapp_message(sender_id, response_text)
@@ -55,9 +50,20 @@ def webhook():
             logger.error("Error sending message: %s", response.get('error'))
         else:
             logger.info("Message sent successfully to %s", sender_id)
-
-
     return jsonify({"status": "received"}), 200
+
+# New endpoint to fetch AliExpress product info asynchronously
+@app.route("/aliexpress", methods=["POST"])
+def aliexpress():
+    data = request.get_json()
+    product_link = data.get("product_link")
+    if not product_link:
+        return jsonify({"error": "Missing product_link parameter"}), 400
+
+    # Import the task here to avoid circular imports if needed
+    from tasks.aliexpress_tasks import fetch_aliexpress_product_info
+    task = fetch_aliexpress_product_info.delay(product_link)
+    return jsonify({"task_id": task.id, "status": "Task initiated"}), 202
 
 @app.errorhandler(Exception)
 def handle_exception(e):
