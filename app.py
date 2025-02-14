@@ -34,6 +34,18 @@ def verify_webhook():
         return challenge, 200
     return "Verification token mismatch", 403
 
+@app.route("/aliwebhook", methods=["GET"])
+def verify_ali_webhook():
+    """
+    Webhook verification endpoint required by Meta.
+    """
+    try:
+        data = request.get_json()
+        logger.debug("\nReceived webhook payload: %s\n", data)
+    except:
+        logger.debug("\nno data")
+    return "Test", 200
+
 def send_welcome_message(recipient_id, custom_messge=""):
     msg="Welcome to the ecommerce bot" if not custom_messge else custom_messge
     # send_whatsapp_interactive_message(
