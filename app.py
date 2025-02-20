@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from config import META_VERIFY_TOKEN, WELCOME_MESSAGE_MEDIA_ID
-from services.wacloud_api import (parse_incoming_message, send_whatsapp_message, send_whatsapp_interactive_message, send_whatsapp_message_image_and_button)
+from services.wacloud_api import (parse_incoming_message, send_whatsapp_message, send_whatsapp_interactive_message, send_whatsapp_message_image_and_button, test)
 
 # Import logging configuration
 import logging
@@ -55,12 +55,14 @@ def send_welcome_message(recipient_id, custom_messge=""):
     #     "Find Best Deal"
     # )
 
-    send_whatsapp_message_image_and_button(
+    test(
         recipient_id,
         msg,
-        "FIND_BEST_DEAL",  # payload that we'll check on button click
-        "🤝 Find Best Deal",
-        WELCOME_MESSAGE_MEDIA_ID
+        WELCOME_MESSAGE_MEDIA_ID,
+        [
+            ("VIEW_CATEGORIES", "👀 View Categories"),
+            ("FIND_BEST_DEAL", "🤝 Find Best Deal")
+        ]
     )
 
     # Mark session state as awaiting feature selection
@@ -92,7 +94,33 @@ def webhook():
 
     # HOME STATE
     if state == "awaiting_feature_selection":
-        if message_text == "FIND_BEST_DEAL":
+        if message_text == "VIEW_CATEGORIES":
+            # Update session to waiting for product link input
+            user_sessions[sender_id]["state"] = "viewing_categories"
+
+            from services.nocodb import fetch_table_records
+            try:
+                products_data = fetch_table_records("mrevopwotcaj87a")
+                logger.debug("\n\n\n\n\n\nProducts: %s", products_data)
+                #send_whatsapp_message(sender_id, f"Product info: {product_info}")
+            except Exception as e:
+                logger.error("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nError fetching products: %s", e)
+                return send_welcome_message(sender_id, "Error fetching product info. Please try again later.")
+
+            products = []
+            for product_data in products_data['list']:
+                products.append(str(product_data['product_id']))
+
+            print(products)
+            print(', '.join(products))
+            send_whatsapp_interactive_message(
+                sender_id,
+                str(', '.join(products)),
+                "HOME",  # payload that we'll check on button click
+                "Back"
+            )
+            return jsonify({"status": "prompt for product link sent"}), 200
+        elif message_text == "FIND_BEST_DEAL":
             # Update session to waiting for product link input
             user_sessions[sender_id]["state"] = "awaiting_product_link"
             # send_whatsapp_message(

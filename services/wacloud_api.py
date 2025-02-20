@@ -118,6 +118,64 @@ def send_whatsapp_message_image_and_button(recipient_id, body_text, button_paylo
     except Exception as e:
         logger.error("Failed to send image interactive message: %s", e)
         return {"error": str(e)}
+    
+def test(recipient_id, body_text, media_id, buttons=None):
+    """
+    Sends a WhatsApp message with an image, text, and optional buttons.
+
+    :param recipient_id: WhatsApp recipient ID
+    :param body_text: Message text
+    :param media_id: ID of the pre-uploaded media (image)
+    :param buttons: List of tuples (button_payload, button_text) or None
+    :return: API response JSON
+    """
+    url = f"{WHATSAPP_API_BASE_URL}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {META_WHATSAPP_TOKEN}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": recipient_id,
+        "type": "interactive",
+        "interactive": {
+            "type": "button",
+            "header": {
+                "type": "image",
+                "image": {
+                    "id": media_id  # Use pre-uploaded media ID
+                }
+            },
+            "body": {
+                "text": body_text
+            }
+        }
+    }
+
+    # If buttons are provided, add them to payload
+    if buttons:
+        payload["interactive"]["action"] = {
+            "buttons": [
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": button_payload,
+                        "title": button_text
+                    }
+                }
+                for button_payload, button_text in buttons
+            ]
+        }
+
+    try:
+        response = requests.post(url, json=payload, headers=headers)
+        response.raise_for_status()
+        return response.json()
+    except Exception as e:
+        logger.error("Failed to send image interactive message: %s", e)
+        return {"error": str(e)}
 
 def parse_incoming_message(request_body):
     """
