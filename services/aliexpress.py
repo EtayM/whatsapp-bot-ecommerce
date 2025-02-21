@@ -7,6 +7,8 @@ import urllib.parse
 import requests
 import logging
 import re
+import concurrent.futures
+
 
 
 from config import ALIEXPRESS_API_APP_KEY, ALIEXPRESS_API_APP_SECRET, ALIEXPRESS_API_URL
@@ -70,18 +72,24 @@ def make_ali_express_api_call(parameters):
         logger.error("Error calling AliExpress API: %s", e)
         raise
 
-def get_product_info(product_link):
+
+def extract_product_id_from_link(product_link):
+    return (m.group(1) if (m := re.search(r'item/(\d+)\.html', product_link)) else None)
+
+def get_product_info_from_link(product_link):
+    product_id = extract_product_id_from_link(product_link)
+    if product_id is None:
+        logger.debug("Invalid AliExpress product link: %s", product_link)
+        return None
+    get_product_info(product_id)
+
+def get_product_info(product_ids):
     """
     Fetch product info from AliExpress using their API.
     """
 
-    product_id = (m.group(1) if (m := re.search(r'item/(\d+)\.html', product_link)) else None)
-    if product_id is None:
-        logger.debug("Invalid AliExpress product link: %s", product_link)
-        return None
-
     params = {
-        "product_ids": str(product_id),
+        "product_ids": ",".join(map(str, product_ids)),
         "method": "aliexpress.affiliate.productdetail.get"
     }
     
@@ -90,14 +98,41 @@ def get_product_info(product_link):
         print(product_info)
         if product_info is None:
             return None
-        product=product_info['aliexpress_affiliate_productdetail_get_response']['resp_result']['result']['products']['product'][0]
-        name=product['product_title']
-        category=product['first_level_category_name']
-        image_url=product['product_main_image_url']
-        return f"Name: {name}\nCategory: {category}\nimage: {image_url}"
+        products=product_info['aliexpress_affiliate_productdetail_get_response']['resp_result']['result']['products']['product']
+        # name=products['product_title']
+        # category=products['first_level_category_name']
+        # image_url=products['product_main_image_url']
+
+        extracted_data = [
+            {
+                "name": product.get("product_title", ""),
+                "category": product.get("first_level_category_name", ""),
+                "image_url": product.get("product_main_image_url", "")
+            }
+            for product in products
+        ]
+        return extracted_data
+
+        # return f"Name: {name}\nCategory: {category}\nimage: {image_url}"
         # response = requests.get(ALIEXPRESS_API_URL, params=params)
         # response.raise_for_status()
         # return response.json()
     except requests.RequestException as e:
         logger.error("Error: %s", e)
         raise
+
+# def get_products_info_async(product_links):
+#     results = []
+#     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+#         # Submit all tasks to the executor
+#         future_to_link = {executor.submit(get_product_info, link): link for link in product_links}
+        
+#         for future in concurrent.futures.as_completed(future_to_link):
+#             link = future_to_link[future]
+#             try:
+#                 result = future.result()
+#                 results.append(result)
+#             except Exception as e:
+#                 print(f"Error fetching {link}: {e}")
+    
+#     return results

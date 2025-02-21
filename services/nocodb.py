@@ -3,13 +3,16 @@
 import requests
 import logging
 
-
+from services.state import State
 from config import NOCODB_API_BASE_URL, NOCODB_API_KEY
 logger = logging.getLogger(__name__)
 
 TABLE_RECORDS_ENDPOINT="api/v2/tables/"
 
 CHATS_TABLE_ID = "myd0mpbrbpy3pm1"
+
+def str_to_state(data: str) -> State:
+    return State.__members__.get(data, State.UNKNOWN)
 
 def fetch_table_records(table_id):
     url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + table_id + "/records"
@@ -29,8 +32,8 @@ def get_user_state(number):
         _, phone_number, current_state = parse_chat_data(fetched_user)
         if not phone_number or not current_state:
             insert_new_chat(number)
-            return number, "HOME"
-        return phone_number, current_state
+            return number, State.HOME
+        return phone_number, str_to_state(current_state)
 
     except requests.RequestException as e:
         raise
@@ -79,16 +82,18 @@ def insert_new_chat(phone_number):
         logger.error("Error calling nocodb API: %s", e)
         raise
 
-def update_user_state(phone_number, new_state):
+def update_user_state(phone_number, new_state: State):
     try:
         fetched_user = fetch_user(phone_number)
-        row_id, _, current_state = parse_chat_data(fetched_user)
-        if not row_id or not _ or not current_state:
-            logger.error("Error", e)
+        row_id, _, current_state_str = parse_chat_data(fetched_user)
+        if not row_id or not _ or not current_state_str:
+            logger.error("Error")
             raise
+        current_state = str_to_state(current_state_str)
+
         if current_state == new_state:
-            logger.error("Error", e)
-            raise
+            logger.info(f"Aborting update_user_state because user is already in {new_state} state.")
+            return
         url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
         headers = { "xc-token" : NOCODB_API_KEY }
         payload = {

@@ -1,19 +1,15 @@
 from flask import Flask, request, jsonify
 from config import META_VERIFY_TOKEN, WELCOME_MESSAGE_MEDIA_ID
-from enum import Enum
+from services.state import State
 from services.wacloud_api import (parse_incoming_message, send_whatsapp_message, send_whatsapp_interactive_message, send_whatsapp_message_image_and_button)
 from services.nocodb import fetch_table_records, get_user_state, update_user_state
 from services.aliexpress import get_product_info
+from services.helpers import truncate
 
 
 # Import logging configuration
 import logging
 import sys
-
-class State(Enum):
-    HOME = 1
-    VIEW_CATEGORIES = 2
-    FIND_BEST_DEAL_AWAITING_LINK = 3
 
 # Basic configuration that logs to stdout. Adjust level and format as needed.
 logging.basicConfig(
@@ -24,9 +20,6 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
-# In-memory session store for demo purposes (keyed by sender_id)
-user_sessions = {}
 
 @app.route("/", methods=["GET"])
 def home():
@@ -69,7 +62,7 @@ def send_welcome_message(recipient_id, custom_messge=""):
     )
 
     # Mark session state as home
-    user_sessions[recipient_id] = {"state": "HOME"}
+    update_user_state(recipient_id, State.HOME)
     return jsonify({"status": "welcome message sent"}), 200
 
 @app.route("/webhook", methods=["POST"])
@@ -93,22 +86,16 @@ def webhook():
         logger.error("Error fetching chat_DB_data: %s", e)
         return send_welcome_message(sender_id, "אירעה שגיאה, אנא נסה שוב.")
 
-    session = user_sessions.get(sender_id)
-    logger.debug("\nSession: %s\n", session)
-
     # New session: send welcome interactive message with a "Find Best Deal" button
-    if session is None:
+    if current_state == State.UNKNOWN:
         logger.info("Starting new session for sender: %s", sender_id)
         return send_welcome_message(sender_id)
         
-    state = session.get("state")
-
     # HOME STATE
-    if state == "HOME":
+    if current_state == State.HOME:
         # ACTION VIEW CATEGORIES
         if message_text == "VIEW_CATEGORIES":
             update_user_state(sender_id, "VIEW_CATEGORIES")
-            user_sessions[sender_id]["state"] = "VIEW_CATEGORIES"
             try:
                 products_data = fetch_table_records("mrevopwotcaj87a")
                 logger.debug("Products: %s", products_data)
@@ -118,13 +105,26 @@ def webhook():
 
             products = []
             for product_data in products_data['list']:
-                products.append(str(product_data['product_id']))
-
-            print(products)
-            print(', '.join(products))
+                products.append(int(product_data['product_id']))
+            
+            product_info = get_product_info(products)
+            # products_info = get_products_info_async(products)
+            # products_info_to_send = "\n".join(
+            #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}\nImage URL: {product['image_url']}"
+            #     for i, product in enumerate(product_info)
+            # )
+            products_info_to_send = "\n".join(
+                f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}"
+                for i, product in enumerate(product_info)
+            )
+            print(f"\n\n\n\n\n\n\n\n {products_info_to_send}")
+            # print(products)
+            # print(products_info)
+            # print(product_info)
+            # print(', '.join(products))
             send_whatsapp_interactive_message(
                 sender_id,
-                str(', '.join(products)),
+                products_info_to_send,
                 "HOME",  # payload that we'll check on button click
                 "Back"
             )
@@ -132,7 +132,7 @@ def webhook():
         # ACTION FIND BEST DEAL
         elif message_text == "FIND_BEST_DEAL":
             # Update session to waiting for product link input
-            user_sessions[sender_id]["state"] = "FIND_BEST_DEAL_AWAITING_LINK"
+            update_user_state(sender_id, State.FIND_BEST_DEAL_AWAITING_LINK)
             # send_whatsapp_message(
             #     sender_id,
             #     "Please paste the link to the AliExpress product, and we'll find the best deal for this product!"
@@ -151,7 +151,7 @@ def webhook():
         
         
     # BEST DEAL STATE
-    elif state == "FIND_BEST_DEAL_AWAITING_LINK":
+    elif current_state == State.FIND_BEST_DEAL_AWAITING_LINK:
         if message_text == "HOME":
             return send_welcome_message(sender_id)
         
@@ -165,7 +165,7 @@ def webhook():
                 logger.error("Error fetching product info: %s", e)
                 return send_welcome_message(sender_id, "אירעה שגיאה בשליפת נתוני המוצר. אנא נסה שנית.")
             # Clear the session once done.
-            user_sessions.pop(sender_id, None)
+            update_user_state(sender_id, State.UNKNOWN)
             return jsonify({"status": "product info sent"}), 200
         else:
             send_whatsapp_interactive_message(
