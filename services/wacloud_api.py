@@ -69,57 +69,7 @@ def send_whatsapp_interactive_message(recipient_id, body_text, button_payload, b
         logger.error("Failed to send interactive message: %s", e)
         return {"error": str(e)}
     
-def send_whatsapp_message_image_and_button(recipient_id, body_text, button_payload, button_text, media_id):
-    """
-    Sends a WhatsApp message with an image, text, and a button.
-    """
-    url = f"{WHATSAPP_API_BASE_URL}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
-    headers = {
-        "Authorization": f"Bearer {META_WHATSAPP_TOKEN}",
-        "Content-Type": "application/json"
-    }
-    payload = {
-        "messaging_product": "whatsapp",
-        "recipient_type": "individual",
-        "to": recipient_id,
-        "type": "interactive",
-        "interactive": {
-            "type": "button",
-            "header": {
-                "type": "image",
-                "image": {
-                    "id": media_id  # Use pre-uploaded media ID
-                }
-            },
-            "body": {
-                "text": body_text
-            },
-            # "footer": {
-            #     "text": "Share the bot and receive coupon!"
-            # },
-            "action": {
-                "buttons": [
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": button_payload,
-                            "title": button_text
-                        }
-                    }
-                ]
-            }
-        }
-    }
-    
-    try:
-        response = requests.post(url, json=payload, headers=headers)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        logger.error("Failed to send image interactive message: %s", e)
-        return {"error": str(e)}
-    
-def test(recipient_id, body_text, media_id, buttons=None):
+def send_whatsapp_message_image_and_button(recipient_id, body_text, media_id, buttons=None):
     """
     Sends a WhatsApp message with an image, text, and optional buttons.
 
