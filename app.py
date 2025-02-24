@@ -3,7 +3,7 @@ from config import META_VERIFY_TOKEN, WELCOME_MESSAGE_MEDIA_ID
 from services.state import State
 from services.wacloud_api import (parse_incoming_message, send_whatsapp_message, send_whatsapp_interactive_message, send_whatsapp_message_image_and_button)
 from services.nocodb import fetch_table_records, get_user_state, update_user_state
-from services.aliexpress import get_product_info
+from services.aliexpress import get_products_info
 from services.helpers import truncate
 
 
@@ -107,7 +107,7 @@ def webhook():
             for product_data in products_data['list']:
                 products.append(int(product_data['product_id']))
             
-            product_info = get_product_info(products)
+            product_info = get_products_info(products)
             # products_info = get_products_info_async(products)
             # products_info_to_send = "\n".join(
             #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}\nImage URL: {product['image_url']}"

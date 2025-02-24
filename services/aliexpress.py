@@ -81,9 +81,9 @@ def get_product_info_from_link(product_link):
     if product_id is None:
         logger.debug("Invalid AliExpress product link: %s", product_link)
         return None
-    get_product_info(product_id)
+    get_products_info(product_id)
 
-def get_product_info(product_ids):
+def get_products_info(product_ids):
     """
     Fetch product info from AliExpress using their API.
     """
