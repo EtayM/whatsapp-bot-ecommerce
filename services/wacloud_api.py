@@ -69,7 +69,7 @@ def send_whatsapp_interactive_message(recipient_id, body_text, button_payload, b
         logger.error("Failed to send interactive message: %s", e)
         return {"error": str(e)}
     
-def send_whatsapp_message_image_and_button(recipient_id, body_text, media_id, buttons=None):
+def send_whatsapp_message_image_and_buttons(recipient_id, body_text, media_id, buttons=None):
     """
     Sends a WhatsApp message with an image, text, and optional buttons.
 
@@ -135,15 +135,15 @@ def parse_incoming_message(request_body):
     # Adjust to match the actual JSON structure from WhatsApp
     entry = request_body.get("entry", [])
     if not entry:
-        return None, None
+        return None, None, None
 
     changes = entry[0].get("changes", [])
     if not changes:
-        return None, None
+        return None, None, None
 
     messages = changes[0].get("value", {}).get("messages", [])
     if not messages:
-        return None, None
+        return None, None, None
 
     msg = messages[0]
     sender_id = msg["from"]  # The user's phone number in WhatsApp
@@ -157,4 +157,5 @@ def parse_incoming_message(request_body):
     if msg.get("interactive", {}).get("button_reply", {}):
         message_text = msg["interactive"]["button_reply"]["id"]
 
-    return sender_id, message_text
+    message_id = msg["id"]  # WhatsApp's unique message ID
+    return sender_id, message_text, message_id

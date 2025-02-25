@@ -2,6 +2,7 @@
 
 import requests
 import logging
+import json
 
 from services.state import State
 from config import NOCODB_API_BASE_URL, NOCODB_API_KEY
@@ -10,6 +11,8 @@ logger = logging.getLogger(__name__)
 TABLE_RECORDS_ENDPOINT="api/v2/tables/"
 
 CHATS_TABLE_ID = "myd0mpbrbpy3pm1"
+CATEGORIES_TABLE_ID = "mbr8dwnprhoi34d"
+SUB_CATEGORIES_TABLE_ID = "mhq2ssap9fngceo"
 
 def str_to_state(data: str) -> State:
     return State.__members__.get(data, State.UNKNOWN)
@@ -32,7 +35,7 @@ def get_user_state(number):
         _, phone_number, current_state = parse_chat_data(fetched_user)
         if not phone_number or not current_state:
             insert_new_chat(number)
-            return number, State.HOME
+            return number, State.UNKNOWN
         return phone_number, str_to_state(current_state)
 
     except requests.RequestException as e:
@@ -98,8 +101,9 @@ def update_user_state(phone_number, new_state: State):
         headers = { "xc-token" : NOCODB_API_KEY }
         payload = {
             "id": row_id,
-            "current_state": new_state
+            "current_state": new_state.name
         }
+
         response = requests.patch(url, headers=headers, data=payload)
         response.raise_for_status()
         logger.debug("nocodb insert endpoint response: %s", response.text)
@@ -107,3 +111,38 @@ def update_user_state(phone_number, new_state: State):
     except Exception as e:
         logger.error("Error calling nocodb API: %s", e)
         raise
+
+def get_categories():
+    try:
+        categories_data = fetch_table_records(CATEGORIES_TABLE_ID)
+        logger.debug("Categories: %s", categories_data)
+    except Exception as e:
+        logger.error("Error fetching categories: %s", e)
+
+    categories = []
+    for category_data in categories_data['list']:
+        categories.append({'Id':int(category_data['Id']), 'Name': str(category_data['Name'])})
+    return categories
+    # product_info = get_products_info(products)
+    # products_info = get_products_info_async(products)
+    # products_info_to_send = "\n".join(
+    #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}\nImage URL: {product['image_url']}"
+    #     for i, product in enumerate(product_info)
+    # )
+    # products_info_to_send = "\n".join(
+    #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}"
+    #     for i, product in enumerate(product_info)
+    # )
+    # print(f"\n\n\n\n\n\n\n\n {products_info_to_send}")
+
+def get_sub_categories():
+    try:
+        categories_data = fetch_table_records(SUB_CATEGORIES_TABLE_ID)
+        logger.debug("Sub-Categories: %s", categories_data)
+    except Exception as e:
+        logger.error("Error fetching sub-categories: %s", e)
+
+    categories = []
+    for category_data in categories_data['list']:
+        categories.append({"category_id":int(category_data['id']), "category_name": str(category_data['Name'])})
+    return json.dumps(categories)
