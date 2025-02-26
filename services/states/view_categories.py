@@ -3,7 +3,7 @@ from config import WELCOME_MESSAGE_MEDIA_ID
 from services.nocodb import update_user_state, get_sub_categories
 from services.wacloud_api import send_whatsapp_message_image_and_buttons
 # from services.helpers import extract_product_ids
-from services.aliexpress import get_products_info
+from .view_sub_category import handle_view_sub_category
 
 def handle_view_categories(user_id, message_text):
     print("handling view categories state")
@@ -30,7 +30,7 @@ def handle_view_categories(user_id, message_text):
             return # Keep in view categories state
         elif message_text.startswith("SUB_CAT_"):
             subcategory_id = message_text[8:]  # Extract the ID after "SUB_CAT_"
-            #next_state_name = f"VIEW_SUBCATEGORY_{subcategory_id}"
+            handle_view_sub_category(user_id, subcategory_id, message_text)
             update_user_state(user_id, "VIEW_SUB_CATEGORY", subcategory_id)
             return
         else:

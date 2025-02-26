@@ -105,7 +105,7 @@ def update_user_state(phone_number, new_state_name: str, subcategory_id = None):
         url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
         headers = { "xc-token" : NOCODB_API_KEY }
         payload = {
-            "id": row_id,
+            "Id": row_id,
             "StateName": new_state_name, # Changed from current_state # Upper camel case
             "SubcategoryId": subcategory_id # Upper camel case
         }
