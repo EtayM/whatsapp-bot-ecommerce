@@ -1,12 +1,13 @@
 import sys
 from flask import Flask, request, jsonify
 from config import META_VERIFY_TOKEN, WELCOME_MESSAGE_MEDIA_ID
-from services.state import State
+#from services.state import State # No longer needed
 from services.nocodb import get_user_state, update_user_state
 from services.wacloud_api import parse_incoming_message, send_whatsapp_message_image_and_buttons
 from tasks.celery_app import process_message_task, app as celery_app
-import services.states as state_handlers
 import logging
+from services.state import StateManager
+import importlib
 
 # Basic configuration that logs to stdout. Adjust level and format as needed.
 logging.basicConfig(
@@ -19,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
+# Initialize StateManager
+state_manager = StateManager()
+
 @app.route('/webhook', methods=['GET', 'POST'])
 def webhook_handler():
     if request.method == 'GET':
@@ -29,15 +33,15 @@ def webhook_handler():
         sender_id, message_text, message_id = parse_incoming_message(payload)
         
         # Get or initialize user state
-        phone_number, user_state = get_user_state(sender_id)
-        if not user_state:
-            user_state = State.UNKNOWN
+        phone_number, state_name, _ = get_user_state(sender_id)
+        if not state_name:
+            state_name = "UNKNOWN" # Default state
 
         # Queue task for async processing
         process_message_task.delay(
             sender_id=sender_id,
             message_text=message_text,
-            user_state=user_state.name,
+            state_name=state_name,
             message_id=message_id
         )
         
@@ -55,10 +59,6 @@ def verify_webhook(request):
     if mode == 'subscribe' and token == META_VERIFY_TOKEN:
         return challenge, 200
     return 'Verification failed', 403
-
-def handle_unknown(user_id, message):
-    from services.states.unknown import handle_unknown as unknown_handler
-    unknown_handler(user_id, message)
 
 if __name__ == "__main__":
     app.run(port=5000, debug=True)

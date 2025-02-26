@@ -4,7 +4,6 @@ import requests
 import logging
 import json
 
-from services.state import State
 from config import NOCODB_API_BASE_URL, NOCODB_API_KEY
 logger = logging.getLogger(__name__)
 
@@ -14,14 +13,14 @@ CHATS_TABLE_ID = "myd0mpbrbpy3pm1"
 CATEGORIES_TABLE_ID = "mbr8dwnprhoi34d"
 SUB_CATEGORIES_TABLE_ID = "mhq2ssap9fngceo"
 
-def str_to_state(data: str) -> State:
-    return State.__members__.get(data, State.UNKNOWN)
-
-def fetch_table_records(table_id):
+def fetch_table_records(table_id, querystring=None):
     url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + table_id + "/records"
-    Headers = { "xc-token" : NOCODB_API_KEY }
+    headers = { "xc-token" : NOCODB_API_KEY }
     try:
-        response = requests.get(url, headers=Headers)
+        if not querystring:
+            response = requests.get(url, headers=headers)
+        else:
+            response = requests.get(url, headers=headers, params=querystring)
         response.raise_for_status()
         logger.debug("nocodb endpoint response: %s", response.text)
         return response.json()
@@ -33,12 +32,11 @@ def fetch_table_records(table_id):
 def get_user_state(number):
     try:
         fetched_user = fetch_user(number)
-        _, phone_number, current_state = parse_chat_data(fetched_user)
-        if not phone_number or not current_state:
+        row_id, phone_number, state_name, subcategory_id = parse_chat_data(fetched_user)
+        if not phone_number or not state_name:
             insert_new_chat(number)
-            return number, State.UNKNOWN
-        return phone_number, str_to_state(current_state)
-
+            return number, "UNKNOWN", None # Default state, no subcategory
+        return phone_number, state_name, subcategory_id
     except requests.RequestException as e:
         from services.helpers import handle_api_error
         handle_api_error(e, "get_user_state", "nocodb API", number)
@@ -47,7 +45,7 @@ def get_user_state(number):
 def fetch_user(phone_number):
     url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
     headers = { "xc-token" : NOCODB_API_KEY }
-    querystring = {"where":f"(phone_number,eq,{phone_number})"}
+    querystring = {"where":f"(PhoneNumber,eq,{phone_number})"}
     try:
         response = requests.get(url, headers=headers, params=querystring)
         response.raise_for_status()
@@ -66,19 +64,22 @@ def parse_chat_data(data):
     # Adjust to match the actual JSON structure from WhatsApp
     list = data.get("list", [])
     if not list:
-        return None, None, None
+        return None, None, None, None
     row_id = list[0].get("Id", [])
-    phone_number = list[0].get("phone_number", [])
-    current_state = list[0].get("current_state", [])
-    if not row_id or not phone_number or not current_state:
-        return None, None, None
-    return row_id, phone_number, current_state
+    phone_number = list[0].get("PhoneNumber", []) # Upper camel case
+    state_name = list[0].get("StateName", []) # Upper camel case
+    subcategory_id = list[0].get("SubcategoryId", []) # Upper camel case
+    if not row_id or not phone_number or not state_name:
+        return None, None, None, None
+    return row_id, phone_number, state_name, subcategory_id
 
 def insert_new_chat(phone_number):
     url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
     headers = { "xc-token" : NOCODB_API_KEY }
     payload = {
-        "phone_number": phone_number
+        "PhoneNumber": phone_number, # Upper camel case
+        "StateName": "UNKNOWN", # Default state # Upper camel case
+        "SubcategoryId": None # No subcategory yet # Upper camel case
     }
     try:
         response = requests.post(url, headers=headers, data=payload)
@@ -90,23 +91,23 @@ def insert_new_chat(phone_number):
         handle_api_error(e, "insert_new_chat", "nocodb API", payload)
         raise
 
-def update_user_state(phone_number, new_state: State):
+def update_user_state(phone_number, new_state_name: str, subcategory_id = None):
     try:
         fetched_user = fetch_user(phone_number)
-        row_id, _, current_state_str = parse_chat_data(fetched_user)
-        if not row_id or not _ or not current_state_str:
+        row_id, _, current_state_name, _ = parse_chat_data(fetched_user)
+        if not current_state_name:
             logger.error("Error")
-            raise
-        current_state = str_to_state(current_state_str)
+            #raise # Remove raise
 
-        if current_state == new_state:
-            logger.info(f"Aborting update_user_state because user is already in {new_state} state.")
+        if current_state_name == new_state_name:
+            logger.info(f"Aborting update_user_state because user is already in {new_state_name} state.")
             return
         url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
         headers = { "xc-token" : NOCODB_API_KEY }
         payload = {
             "id": row_id,
-            "current_state": new_state.name
+            "StateName": new_state_name, # Changed from current_state # Upper camel case
+            "SubcategoryId": subcategory_id # Upper camel case
         }
 
         response = requests.patch(url, headers=headers, data=payload)
@@ -122,35 +123,27 @@ def get_categories():
     try:
         categories_data = fetch_table_records(CATEGORIES_TABLE_ID)
         logger.debug("Categories: %s", categories_data)
-    except Exception as e:
+    except requests.RequestException as e:
         from services.helpers import handle_api_error
         handle_api_error(e, "get_categories", "nocodb API", CATEGORIES_TABLE_ID)
+        raise
 
     categories = []
     for category_data in categories_data['list']:
-        categories.append({'Id':int(category_data['Id']), 'Name': str(category_data['Name'])})
+        categories.append({'Id':str(category_data['CategoryId']), 'Name': str(category_data['Name'])})
     return categories
-    # product_info = get_products_info(products)
-    # products_info = get_products_info_async(products)
-    # products_info_to_send = "\n".join(
-    #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}\nImage URL: {product['image_url']}"
-    #     for i, product in enumerate(product_info)
-    # )
-    # products_info_to_send = "\n".join(
-    #     f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}"
-    #     for i, product in enumerate(product_info)
-    # )
-    # print(f"\n\n\n\n\n\n\n\n {products_info_to_send}")
 
-def get_sub_categories():
+def get_sub_categories(category_id):
     try:
-        categories_data = fetch_table_records(SUB_CATEGORIES_TABLE_ID)
-        logger.debug("Sub-Categories: %s", categories_data)
-    except Exception as e:
+        sub_categories_data = fetch_table_records(SUB_CATEGORIES_TABLE_ID, {"where":f"(CategoryId,eq,{category_id})"}) # Upper camel case
+        logger.debug("Sub-Categories: %s", sub_categories_data)
+    except requests.RequestException as e:
         from services.helpers import handle_api_error
         handle_api_error(e, "get_sub_categories", "nocodb API", SUB_CATEGORIES_TABLE_ID)
+        raise
 
-    categories = []
-    for category_data in categories_data['list']:
-        categories.append({"category_id":int(category_data['id']), "category_name": str(category_data['Name'])})
-    return json.dumps(categories)
+    sub_categories = []
+    for sub_category_data in sub_categories_data['list']:
+        sub_categories.append({'Id':str(sub_category_data['SubCategoryId']), 'Name': str(sub_category_data['Name'])}) # Upper camel case
+    
+    return sub_categories

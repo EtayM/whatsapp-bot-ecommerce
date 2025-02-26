@@ -20,9 +20,9 @@ class APIError(Exception):
     """Custom exception for API errors."""
     pass
 
-def handle_api_error(e, function_name, api_endpoint, params):
+def handle_api_error(e, function_name, api_endpoint, params=None):
     """
     Handles API errors by logging them with context and re-raising a custom exception.
     """
-    logger.error(f"Error in {function_name} calling {api_endpoint} with params {params}: {e}")
+    logger.error(f"Error in {function_name} calling {api_endpoint} with params {params}. Error: {e}")
     raise APIError(f"Error calling {api_endpoint}: {e}")

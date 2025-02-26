@@ -1,9 +1,9 @@
 from config import WELCOME_MESSAGE_MEDIA_ID
-from services.state import State
+#from services.state import State # No longer needed
 from services.nocodb import update_user_state
 from services.wacloud_api import send_whatsapp_message_image_and_buttons
 
-def handle_unknown(user_id, message):
+def handle_unknown(user_id, message_text):
     print("handling unknown")
     # Send welcome message with image and buttons
     welcome_message = "Welcome to AliExpress Affiliate Bot! 🛍️"
@@ -19,4 +19,4 @@ def handle_unknown(user_id, message):
         buttons
     )
     
-    update_user_state(user_id, State.HOME)
+    update_user_state(user_id, "HOME")

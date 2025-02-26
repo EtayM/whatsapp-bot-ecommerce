@@ -10,9 +10,11 @@ load_dotenv(env_path)
 from celery import Celery
 import redis
 from config import CELERY_BROKER_URL
-from services.state import State
-import services.states as state_handlers
+#from services.state import State # No longer needed
 import logging
+#import services.states as state_handlers # No longer needed
+from services.state import StateManager
+import importlib
 
 logger = logging.getLogger(__name__)
 
@@ -28,9 +30,13 @@ app.conf.update(
 # Configure Redis connection for idempotency
 redis_client = redis.from_url(CELERY_BROKER_URL)
 
+# Initialize StateManager
+state_manager = StateManager()
+
 @app.task(name='process_message_task')
-def process_message_task(sender_id, message_text, user_state, message_id):
+def process_message_task(sender_id, message_text, state_name, message_id):
     """Process WhatsApp message with deduplication"""
+    logger.debug(f"process_message_task called with sender_id: {sender_id}, message_text: {message_text}, state_name: {state_name}, message_id: {message_id}") # Add logging
     try:
         # Check if we've already processed this message
         if redis_client.get(f"msg:{message_id}"):
@@ -40,16 +46,33 @@ def process_message_task(sender_id, message_text, user_state, message_id):
         # Store message ID with 24h expiration (WhatsApp's retry window)
         redis_client.setex(f"msg:{message_id}", 86400, "1")
 
-        # Get handler function
-        handler_name = f"handle_{user_state.lower()}"
-        handler = getattr(state_handlers, handler_name, None)
+        # Reload states to ensure they are up-to-date
+        state_manager.load_states()
 
-        if not handler:
-            logger.error(f"No handler found for state: {user_state}")
+        # Get state object from StateManager
+        state = state_manager.get_state(state_name)
+        if not state:
+            logger.error(f"State '{state_name}' not found.")
             return
 
-        # Execute state handler
-        handler(sender_id, message_text)
+        # Dynamically import and call the state handler function
+        handler_module = importlib.import_module(state['handler_module'])
+        handler_function = getattr(handler_module, state['handler_function'])
+
+        # Extract parameter value if needed
+        parameter_name = state.get('parameter_name')
+        parameter_value = None
+        if parameter_name == "subcategory_id":
+            # Retrieve from database (requires modification to get_user_state)
+            from services.nocodb import get_user_state
+            _, _, subcategory_id = get_user_state(sender_id)
+            parameter_value = subcategory_id
+
+        # Call the handler function with or without the parameter
+        if parameter_value:
+            handler_function(sender_id, parameter_value, message_text)
+        else:
+            handler_function(sender_id, message_text)
 
     except Exception as e:
         logger.error(f"Error processing message {message_id}: {str(e)}")
