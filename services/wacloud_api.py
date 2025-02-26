@@ -23,13 +23,15 @@ def send_whatsapp_message(recipient_id, message_text):
         response = requests.post(url, json=payload, headers=headers)
         response.raise_for_status()  # Raises an HTTPError for bad responses (4xx or 5xx)
     except requests.RequestException as err:
-        logger.error("Failed to send WhatsApp message: %s", err)
+        from services.helpers import handle_api_error
+        handle_api_error(err, "send_whatsapp_message", "WhatsApp Cloud API", payload)
         return {"error": str(err)}
 
     try:
         return response.json()
     except ValueError:
-        logger.error("Invalid JSON response from WhatsApp API: %s", response.text)
+        from services.helpers import handle_api_error
+        handle_api_error(ValueError("Invalid JSON response"), "send_whatsapp_message", "WhatsApp Cloud API", response.text)
         return {"error": "Invalid JSON response"}
 
 
@@ -66,7 +68,8 @@ def send_whatsapp_interactive_message(recipient_id, body_text, button_payload, b
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error("Failed to send interactive message: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "send_whatsapp_interactive_message", "WhatsApp Cloud API", payload)
         return {"error": str(e)}
     
 def send_whatsapp_message_image_and_buttons(recipient_id, body_text, media_id, buttons=None):
@@ -124,7 +127,8 @@ def send_whatsapp_message_image_and_buttons(recipient_id, body_text, media_id, b
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error("Failed to send image interactive message: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "send_whatsapp_message_image_and_buttons", "WhatsApp Cloud API", payload)
         return {"error": str(e)}
 
 def parse_incoming_message(request_body):

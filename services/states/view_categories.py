@@ -30,6 +30,8 @@ def handle_view_categories(user_id, message):
         update_user_state(user_id, State.HOME)
         
     except Exception as e:
+        from services.helpers import handle_api_error
+        handle_api_error(e, "handle_view_categories", "get_sub_categories", message)
         send_error_message(user_id)
         raise
 

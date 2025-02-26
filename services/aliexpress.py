@@ -7,7 +7,6 @@ import urllib.parse
 import requests
 import logging
 import re
-import concurrent.futures
 
 
 
@@ -118,7 +117,8 @@ def get_products_info(product_ids):
         # response.raise_for_status()
         # return response.json()
     except requests.RequestException as e:
-        logger.error("Error: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "get_products_info", "aliexpress.affiliate.productdetail.get", params)
         raise
 
 # def get_products_info_async(product_links):

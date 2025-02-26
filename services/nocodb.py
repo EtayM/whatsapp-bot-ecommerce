@@ -26,7 +26,8 @@ def fetch_table_records(table_id):
         logger.debug("nocodb endpoint response: %s", response.text)
         return response.json()
     except requests.RequestException as e:
-        logger.error("Error calling nocodb API: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "fetch_table_records", "nocodb API", table_id)
         raise
 
 def get_user_state(number):
@@ -39,6 +40,8 @@ def get_user_state(number):
         return phone_number, str_to_state(current_state)
 
     except requests.RequestException as e:
+        from services.helpers import handle_api_error
+        handle_api_error(e, "get_user_state", "nocodb API", number)
         raise
     
 def fetch_user(phone_number):
@@ -51,7 +54,8 @@ def fetch_user(phone_number):
         logger.debug("nocodb endpoint response: %s", response.text)
         return response.json()
     except requests.RequestException as e:
-        logger.error("Error calling nocodb API: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "fetch_user", "nocodb API", phone_number)
         raise
 
 def parse_chat_data(data):
@@ -82,7 +86,8 @@ def insert_new_chat(phone_number):
         logger.debug("nocodb insert endpoint response: %s", response.text)
         return response.json()
     except Exception as e:
-        logger.error("Error calling nocodb API: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "insert_new_chat", "nocodb API", payload)
         raise
 
 def update_user_state(phone_number, new_state: State):
@@ -109,7 +114,8 @@ def update_user_state(phone_number, new_state: State):
         logger.debug("nocodb insert endpoint response: %s", response.text)
         return response.json()
     except Exception as e:
-        logger.error("Error calling nocodb API: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "update_user_state", "nocodb API", payload)
         raise
 
 def get_categories():
@@ -117,7 +123,8 @@ def get_categories():
         categories_data = fetch_table_records(CATEGORIES_TABLE_ID)
         logger.debug("Categories: %s", categories_data)
     except Exception as e:
-        logger.error("Error fetching categories: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "get_categories", "nocodb API", CATEGORIES_TABLE_ID)
 
     categories = []
     for category_data in categories_data['list']:
@@ -140,7 +147,8 @@ def get_sub_categories():
         categories_data = fetch_table_records(SUB_CATEGORIES_TABLE_ID)
         logger.debug("Sub-Categories: %s", categories_data)
     except Exception as e:
-        logger.error("Error fetching sub-categories: %s", e)
+        from services.helpers import handle_api_error
+        handle_api_error(e, "get_sub_categories", "nocodb API", SUB_CATEGORIES_TABLE_ID)
 
     categories = []
     for category_data in categories_data['list']:

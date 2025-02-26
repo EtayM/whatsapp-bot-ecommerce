@@ -40,6 +40,8 @@ def handle_find_best_deal_awaiting_link(user_id, message):
         update_user_state(user_id, State.HOME)
 
     except Exception as e:
+        from services.helpers import handle_api_error
+        handle_api_error(e, "handle_find_best_deal_awaiting_link", "get_products_info", message)
         send_error_message(user_id)
         raise
 

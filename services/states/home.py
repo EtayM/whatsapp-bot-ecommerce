@@ -36,6 +36,9 @@ def handle_view_categories(user_id):
         update_user_state(user_id, State.VIEW_CATEGORIES)
         
     except Exception as e:
+        from services.helpers import handle_api_error
+        from config import WELCOME_MESSAGE_MEDIA_ID
+        handle_api_error(e, "handle_view_categories", "get_categories", WELCOME_MESSAGE_MEDIA_ID)
         send_error_message(user_id)
         raise
 
