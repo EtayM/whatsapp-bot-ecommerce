@@ -1,5 +1,5 @@
 from config import WELCOME_MESSAGE_MEDIA_ID
-from services.nocodb import get_sub_categories, fetch_table_records
+from services.nocodb import fetch_table_records
 from services.wacloud_api import send_whatsapp_message_image_and_buttons
 from services.aliexpress import get_products_info
 from services.helpers import truncate, get_localized_string, get_user_lang

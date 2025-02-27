@@ -1,5 +1,4 @@
 from config import WELCOME_MESSAGE_MEDIA_ID
-#from services.state import State # No longer needed
 from services.nocodb import update_user_state, get_sub_categories
 from services.wacloud_api import send_whatsapp_message_image_and_buttons
 from services.helpers import get_user_lang, get_localized_string

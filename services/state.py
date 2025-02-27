@@ -7,7 +7,7 @@ from services.nocodb import fetch_table_records
 
 logger = logging.getLogger(__name__)
 
-STATES_TABLE_ID = "mv298y9fqa5019f"  # Replace with your actual table ID
+STATES_TABLE_ID = "mv298y9fqa5019f"
 
 class StateManager:
     def __init__(self):
@@ -17,16 +17,16 @@ class StateManager:
     def load_states(self):
         try:
             states_data = fetch_table_records(STATES_TABLE_ID)
-            logger.debug(f"States data from NocoDB: {states_data}") # Add logging
+            logger.debug(f"States data from NocoDB: {states_data}")
             for state_data in states_data['list']:
-                state_name = state_data['Name'] # Upper camel case
-                handler_module = state_data['HandlerModule'] # Upper camel case
-                handler_function = state_data['HandlerFunction'] # Upper camel case
-                welcome_message = state_data['WelcomeMessage'] # Upper camel case
-                parameter_name = state_data.get('ParameterName')  # Get the parameter name # Upper camel case
-                other_data = state_data.get('OtherData') # Get other data
+                state_name = state_data['Name']
+                handler_module = state_data['HandlerModule']
+                handler_function = state_data['HandlerFunction']
+                welcome_message = state_data['WelcomeMessage']
+                parameter_name = state_data.get('ParameterName')
+                other_data = state_data.get('OtherData')
                 if other_data is not None:
-                    other_data = json.loads(other_data)  # Safely parse JSON
+                    other_data = json.loads(other_data)
                 else:
                     other_data = {}
 
