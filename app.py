@@ -2,7 +2,7 @@ import sys
 from flask import Flask, request, jsonify
 from config import META_VERIFY_TOKEN, WELCOME_MESSAGE_MEDIA_ID
 #from services.state import State # No longer needed
-from services.nocodb import get_user_state, update_user_state
+from services.nocodb import get_user_state
 from services.wacloud_api import parse_incoming_message, send_whatsapp_message_image_and_buttons
 from tasks.celery_app import process_message_task, app as celery_app
 import logging

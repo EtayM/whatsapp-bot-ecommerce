@@ -16,3 +16,10 @@ ALIEXPRESS_API_URL = os.environ.get("ALIEXPRESS_API_URL")
 #Database
 NOCODB_API_BASE_URL = os.environ.get("NOCODB_API_BASE_URL")
 NOCODB_API_KEY = os.environ.get("NOCODB_API_KEY")
+
+# Localization
+from pathlib import Path
+BASE_DIR = Path(__file__).resolve().parent
+LOCALES_DIR = str(BASE_DIR / "locales")
+DEFAULT_LANGUAGE = "en"
+RTL_LANGUAGES = ["he"]

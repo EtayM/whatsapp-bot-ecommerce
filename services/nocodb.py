@@ -4,7 +4,7 @@ import requests
 import logging
 import json
 
-from config import NOCODB_API_BASE_URL, NOCODB_API_KEY
+from config import NOCODB_API_BASE_URL, NOCODB_API_KEY, DEFAULT_LANGUAGE
 logger = logging.getLogger(__name__)
 
 TABLE_RECORDS_ENDPOINT="api/v2/tables/"
@@ -119,7 +119,7 @@ def update_user_state(phone_number, new_state_name: str, subcategory_id = None):
         handle_api_error(e, "update_user_state", "nocodb API", payload)
         raise
 
-def get_categories():
+def get_categories(language=DEFAULT_LANGUAGE):
     try:
         categories_data = fetch_table_records(CATEGORIES_TABLE_ID)
         logger.debug("Categories: %s", categories_data)
@@ -130,10 +130,11 @@ def get_categories():
 
     categories = []
     for category_data in categories_data['list']:
-        categories.append({'Id':str(category_data['CategoryId']), 'Name': str(category_data['Name'])})
+        name_field = f"{language}_Name"
+        categories.append({'Id':str(category_data['CategoryId']), 'Name': str(category_data.get(name_field, category_data[f"{DEFAULT_LANGUAGE}_Name"]))})
     return categories
 
-def get_sub_categories(category_id):
+def get_sub_categories(category_id, language=DEFAULT_LANGUAGE):
     try:
         sub_categories_data = fetch_table_records(SUB_CATEGORIES_TABLE_ID, {"where":f"(CategoryId,eq,{category_id})"}) # Upper camel case
         logger.debug("Sub-Categories: %s", sub_categories_data)
@@ -144,6 +145,7 @@ def get_sub_categories(category_id):
 
     sub_categories = []
     for sub_category_data in sub_categories_data['list']:
-        sub_categories.append({'Id':str(sub_category_data['SubCategoryId']), 'Name': str(sub_category_data['Name'])}) # Upper camel case
+        name_field = f"{language}_Name"
+        sub_categories.append({'Id':str(sub_category_data['SubCategoryId']), 'Name': str(sub_category_data.get(name_field, sub_category_data[f"{DEFAULT_LANGUAGE}_Name"]))}) # Upper camel case
     
     return sub_categories

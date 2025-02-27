@@ -2,11 +2,12 @@ from config import WELCOME_MESSAGE_MEDIA_ID
 from services.nocodb import get_sub_categories, fetch_table_records
 from services.wacloud_api import send_whatsapp_message_image_and_buttons
 from services.aliexpress import get_products_info
-from services.helpers import truncate
+from services.helpers import truncate, get_localized_string, get_user_lang
 
 def handle_view_sub_category(user_id, subcategory_id, message_text):
     print(f"handling view sub category state for subcategory_id: {subcategory_id}")
 
+    lang=get_user_lang(user_id)
     try:
         products_data = fetch_table_records("mrevopwotcaj87a")
         print("Products: %s", products_data)
@@ -20,15 +21,10 @@ def handle_view_sub_category(user_id, subcategory_id, message_text):
             f"{i+1}. Name: {truncate(product['name'])}\nCategory: {product['category']}"
             for i, product in enumerate(product_info)
         )
-        print(f"\n\n\n\n\n\n\n\n {products_info_to_send}")
-        # print(products)
-        # print(products_info)
-        # print(product_info)
-        # print(', '.join(products))
 
         buttons = [
-            ("VIEW_CATEGORIES", "👀 המומלצים"),
-            ("FIND_BEST_DEAL", "🤝 מצא דיל הכי משתלם")
+            ("VIEW_CATEGORIES", get_localized_string(lang, 'button.recommended')),
+            ("FIND_BEST_DEAL", get_localized_string(lang, 'button.find_best_deal'))
         ]
         send_whatsapp_message_image_and_buttons(
             user_id,
@@ -45,9 +41,5 @@ def handle_view_sub_category(user_id, subcategory_id, message_text):
     raise
 
 def send_error_message(user_id):
-    send_whatsapp_message_image_and_buttons(
-        user_id=user_id,
-        image_url="https://example.com/error-image.jpg",
-        message="⚠️ Error loading products. Please try again.",
-        buttons=[]
-    )
+    # TODO
+    pass
