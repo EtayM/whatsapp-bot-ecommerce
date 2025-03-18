@@ -35,8 +35,18 @@ def get_user_state(number):
         row_id, phone_number, state_name, subcategory_id = parse_chat_data(fetched_user)
         if not phone_number or not state_name:
             insert_new_chat(number)
-            return number, "UNKNOWN", None # Default state, no subcategory
-        return phone_number, state_name, subcategory_id
+            # return number, "UNKNOWN", None # Default state, no subcategory
+            return {
+                "phone_number": number,
+                "state_name": "UNKNOWN",
+                "subcategory_id": None
+            }
+        return {
+            "phone_number": phone_number,
+            "state_name": state_name,
+            "subcategory_id": subcategory_id
+        }
+        # return phone_number, state_name, subcategory_id
     except requests.RequestException as e:
         from services.helpers import handle_api_error
         handle_api_error(e, "get_user_state", "nocodb API", number)
@@ -66,9 +76,9 @@ def parse_chat_data(data):
     if not list:
         return None, None, None, None
     row_id = list[0].get("Id", [])
-    phone_number = list[0].get("PhoneNumber", []) # Upper camel case
-    state_name = list[0].get("StateName", []) # Upper camel case
-    subcategory_id = list[0].get("SubcategoryId", []) # Upper camel case
+    phone_number = list[0].get("PhoneNumber", [])
+    state_name = list[0].get("StateName", [])
+    subcategory_id = list[0].get("SubcategoryId", [])
     if not row_id or not phone_number or not state_name:
         return None, None, None, None
     return row_id, phone_number, state_name, subcategory_id
@@ -77,9 +87,9 @@ def insert_new_chat(phone_number):
     url = NOCODB_API_BASE_URL + TABLE_RECORDS_ENDPOINT + CHATS_TABLE_ID + "/records"
     headers = { "xc-token" : NOCODB_API_KEY }
     payload = {
-        "PhoneNumber": phone_number, # Upper camel case
-        "StateName": "UNKNOWN", # Default state # Upper camel case
-        "SubcategoryId": None # No subcategory yet # Upper camel case
+        "PhoneNumber": phone_number, 
+        "StateName": "UNKNOWN", # Default state
+        "SubcategoryId": None # No subcategory yet
     }
     try:
         response = requests.post(url, headers=headers, data=payload)
@@ -106,8 +116,8 @@ def update_user_state(phone_number, new_state_name: str, subcategory_id = None):
         headers = { "xc-token" : NOCODB_API_KEY }
         payload = {
             "Id": row_id,
-            "StateName": new_state_name, # Changed from current_state # Upper camel case
-            "SubcategoryId": subcategory_id # Upper camel case
+            "StateName": new_state_name,
+            "SubcategoryId": subcategory_id
         }
 
         response = requests.patch(url, headers=headers, data=payload)

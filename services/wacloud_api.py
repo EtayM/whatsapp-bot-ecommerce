@@ -3,7 +3,7 @@ import logging
 from config import META_WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID
 
 logger = logging.getLogger(__name__)
-WHATSAPP_API_BASE_URL = "https://graph.facebook.com/v21.0"  # Adjust version as needed
+WHATSAPP_API_BASE_URL = "https://graph.facebook.com/v22.0"  # Adjust version as needed
 
 def send_whatsapp_message(recipient_id, message_text):
     """

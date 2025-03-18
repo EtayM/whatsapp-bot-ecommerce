@@ -63,10 +63,10 @@ def process_message_task(sender_id, message_text, state_name, message_id):
         parameter_name = state.get('parameter_name')
         parameter_value = None
         if parameter_name == "subcategory_id":
-            # Retrieve from database (requires modification to get_user_state)
+            # Retrieve from database
             from services.nocodb import get_user_state
-            _, _, subcategory_id = get_user_state(sender_id)
-            parameter_value = subcategory_id
+            user_state = get_user_state(sender_id)
+            parameter_value = user_state['subcategory_id']
 
         # Call the handler function with or without the parameter
         if parameter_value:

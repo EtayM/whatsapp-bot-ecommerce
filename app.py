@@ -33,7 +33,10 @@ def webhook_handler():
         sender_id, message_text, message_id = parse_incoming_message(payload)
         
         # Get or initialize user state
-        phone_number, state_name, _ = get_user_state(sender_id)
+        # phone_number, state_name, _ = get_user_state(sender_id)
+        user_state = get_user_state(sender_id)
+        state_name = user_state.get("state_name")
+
         if not state_name:
             state_name = "UNKNOWN" # Default state
 
